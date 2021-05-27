@@ -1,6 +1,7 @@
 # Dirtsat Rooftop Index Development
 
 ## Dependencies
+- Python and Jupyter Notebooks
 
 ## Layers
 - **Roof Pitch:** This layer uses a convolutional neural network of NAIP imagery to classify rooftops as either pitched or not pitched.
