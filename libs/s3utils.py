@@ -23,9 +23,6 @@ class S3Reader(object):
         self.resource = s3_res 
         self.client = s3_client
 
-        #aws_access_key_id="AKIAUVHRVMKCX2I2MPT3",
-        #aws_secret_access_key="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"
-
     def list_folders(self, path):
         """Returns list all folders in prefix"""
         res_list = []
