@@ -6,13 +6,18 @@ from fiona.session import AWSSession
 import geopandas as gpd
 import zipfile
 from io import BytesIO
+import os
+import shutil
+from fiona.io import ZipMemoryFile
+from io import BytesIO
+import zipfile
 
 #%%
 s3_res = boto3.resource('s3')
 s3_client = s3_res.meta.client
 
 # %%
-class S3Reader(object):
+class S3Helper(object):
 
     """
     Class with helper functions to read and process data in S3
@@ -59,30 +64,64 @@ class S3Reader(object):
         shxnames = [f for f in zipshape.namelist() if '.shx' == f[-4:] and '__MACOSX' not in f]
         return shpnames[0], shxnames[0], dbfnames[0]
     
-    def get_shp_from_s3_as_gpd(self, path):
+    def read_shp_from_s3_as_gpd(self, path):
         """Gets zipped shapefile from S3 bucket and returns as Geopandas DF
 
         Args:
             path (str): path to zipped shapefile
         """
-        full_path = 'zip+s3://' + self.bucket + path
+        full_path = 'zip+s3://' + self.bucket + '/' + path
         with fiona.Env(session=AWSSession(boto3.Session())):
             gdf = gpd.read_file(full_path)
         return gdf
     
-    def get_tif_from_s3_as_rio(self, path):
+    def read_tif_from_s3_as_rio(self, path):
         """Gets geotiff from s3 bucket and returns as rasterio object
 
         Args:
             path (str): path to geotiff
         """
-        full_path = 's3://' + self.bucket + path
+        full_path = 's3://' + self.bucket + '/' + path
         return rasterio.open(full_path)
+        
+    def write_gdf_to_s3(self, object, path):
+        """Writes geopandas dataframe to S3 as a zipped shapefile
 
-# %% TEST
-# S3 = S3Reader('roof-index')
-# gdf = S3.get_shp_from_s3_to_gpd('/missoula/geospatial/downtown_bldgs.zip')
-# %%
-import rasterio
-test = rasterio.open('s3://roof-index/missoula/geospatial/downtown_dsm.tif')
+        Args:
+            object (object): object to be written S3 bucket
+            path (str): full path including filename (e.g. missoula/geospatial/test.zip)
+        """
+        tempdir = 'temp/'
+        fname = path.split("/")[-1].split('.')[0]
+        ftype = fname.split('.')[-1]
+        
+        if not os.path.isdir(tempdir):
+            os.mkdir(tempdir)
+            
+        if ftype == 'zip':            
+            object.to_file(filename=tempdir + fname, driver='ESRI Shapefile')
+            shutil.make_archive(tempdir + fname, ftype, tempdir + fname)
+            s3_res.Bucket('roof-index').put_object(
+                Key=path,
+                Body=open(tempdir + fname + '.' + ftype, 'rb')
+            )
+        elif ftype == 'tif':
+            #TODO: https://rasterio.readthedocs.io/en/latest/quickstart.html
+            pass
+        else:
+            print("Sorry, your file type is unrecognized.")
+                                
+        shutil.rmtree(tempdir)
+        print(fname + '.' + ftype + " has been successfully written to your S3 bucket.")
+
+
+# %% TEST shapefile read/write
+# path = 'missoula/geospatial/'
+# S3 = S3Helper('roof-index')
+# gdf = S3.read_shp_from_s3_as_gpd(path + 'downtown_bldgs.zip')
+# S3.write_gdf_to_s3(path + 'test3.zip')
+
+# %% Test geotiff read/write
+# path = 'missoula/geospatial/'
+# gt = S3.read_tif_from_s3_as_rio(path + 'downtown_dsm.tif')
 # %%
