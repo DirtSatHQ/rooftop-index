@@ -93,7 +93,7 @@ class S3Helper(object):
         """
         tempdir = 'temp/'
         fname = path.split("/")[-1].split('.')[0]
-        ftype = fname.split('.')[-1]
+        ftype = path.split('.')[-1]
         
         if not os.path.isdir(tempdir):
             os.mkdir(tempdir)
@@ -105,21 +105,20 @@ class S3Helper(object):
                 Key=path,
                 Body=open(tempdir + fname + '.' + ftype, 'rb')
             )
+            print(fname + '.' + ftype + " has been successfully written to your S3 bucket.")
         elif ftype == 'tif':
             #TODO: https://rasterio.readthedocs.io/en/latest/quickstart.html
             pass
         else:
-            print("Sorry, your file type is unrecognized.")
-                                
+            print("Sorry, your file type is unrecognized.")                        
         shutil.rmtree(tempdir)
-        print(fname + '.' + ftype + " has been successfully written to your S3 bucket.")
 
 
 # %% TEST shapefile read/write
 # path = 'missoula/geospatial/'
 # S3 = S3Helper('roof-index')
 # gdf = S3.read_shp_from_s3_as_gpd(path + 'downtown_bldgs.zip')
-# S3.write_gdf_to_s3(path + 'test3.zip')
+# S3.write_gdf_to_s3(gdf, path + 'test3.zip')
 
 # %% Test geotiff read/write
 # path = 'missoula/geospatial/'
