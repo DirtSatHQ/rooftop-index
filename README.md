@@ -2,8 +2,43 @@
 
 ## Dependencies
 - Python and Jupyter Notebooks
+- All other python dependencies are listed in the `requirements.txt` file
+- Make sure the `pygdal` version matches the gdal version on your local machine. 
 
-## Layers
-- **Roof Pitch:** This layer uses a convolutional neural network of NAIP imagery to classify rooftops as either pitched or not pitched.
+## Conceptual diagram
+![concept diagram](imgs/RooftopIndexWorkflow.jpg)
 
-- **Useable Area:** This layer is based on LiDAR data. It calculates the useable area as the amount of area with one-foot elevation of the modal elevation of the rooftop.
+## Concept details
+
+### Pitch Filter
+![Pitch filter POC notebook](useable_area/flat_area.ipynb)
+Based on LiDAR data. Filter out any roofs that are greater than 10% slope
+
+(*Colin to fill in more details*)
+
+### Flat Area ID (FAID)
+![FAID POC notebook](useable_area/flat_area.ipynb)
+Based on LiDAR data. Identify areas within building footprint taht are flat and greater than 1000 sf. Output is a shapefile with an attribute taht connects each polygon to a building footprint. 
+
+This vector data will be used to throughout the MCDA feature development. 
+
+(*Colin to fill in more details*)
+
+### Useable area
+![Useable area POC notebook](useable_area/flat_area.ipynb)
+Based on LiDAR data. The area within a FAID that could be used to for a farm. 
+
+(*Colin to fill in more details*)
+
+### Slope
+Based on LiDAR data. The average slope within a FAID.
+
+### Load volume
+Based on LiDAR data. The volume of structures on top of a FAID. 
+
+### Height
+Based on LiDAR data. The average height above ground surface of FAID.
+
+This is calculated from a raster of structure height. If there is no raster 
+
+### 
