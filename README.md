@@ -1,7 +1,7 @@
 # Dirtsat Rooftop Index Development
 
 ## Dependencies
-- Python and Jupyter Notebooks
+- Python 3 and Jupyter Notebooks
 - All other python dependencies are listed in the `requirements.txt` file
 - Make sure the `pygdal` version matches the `gdal` version on your local machine. 
 
