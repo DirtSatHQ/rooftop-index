@@ -13,25 +13,26 @@
 ### Pitch Filter
 [Pitch filter POC notebook](roof_pitch/lidar_roof_pitch.ipynb)
 
-Based on LiDAR data. Filter out any roofs that are greater than 10% slope
+Based on LiDAR data. Filter out any roofs that are not flat. 
 
-(*Colin to fill in more details*)
+First, LiDAR elevation data is converted to slope using the gdal.DEMProcessing module. A rooftop is classified as flat if the number of pixels on a given rooftop that are less than or equal to **slope_threshold** make up more than **area_threshold** percent of the rooftop. **slope_threshold** is a hyperparameter defining the slope (in degrees) at which we consider a pixel to be flat. **area_threshold** is a hyperparameter defining the percentage of pixels on a rooftop that must be flat for a roof to be considered flat. 
 
 ### Flat Area ID (FAID)
 [FAID POC notebook](useable_area/flat_area.ipynb)
 
-Based on LiDAR data. Identify areas within building footprint taht are flat and greater than 1000 sf. Output is a shapefile with an attribute taht connects each polygon to a building footprint. 
+Based on LiDAR data. Identify areas within building footprint that are flat and greater than 1000 sf. Output is a shapefile with an attribute that connects each polygon to a building footprint. 
 
 This vector data will be used to throughout the MCDA feature development. 
 
-(*Colin to fill in more details*)
+To find contiguous flat areas, a raster of building height is smoothed with a gaussian filter to remove any pits, and a raster of slope is masked to 1 if slope is less than 45 degrees and 0 if slope is greater than 45 degrees. These two new rasters are multiplied and filtered to remove pixels that are smaller than 5 feet. The raster is then polygonized using GDAL and intersected with the building footprint vector to create a vector of contiguous flat areas within building footprints. Finally, this new vector is filtered to remove flat areas smaller than 1000 square feet. 
+
 
 ### Useable area
 [Useable area POC notebook](useable_area/flat_area.ipynb)
 
 Based on LiDAR data. The area within a FAID that could be used to for a farm. 
 
-(*Colin to fill in more details*)
+Useable area is derived from each unique FAID. For a given FAID polygon, the area attribute is extracted from the .shp geometry and multiplied by 10.7639 to convert from m^2 to ft^2.
 
 ### Slope
 Based on LiDAR data. The average slope within a FAID.
