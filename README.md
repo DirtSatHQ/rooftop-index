@@ -1,9 +1,9 @@
 # Dirtsat Rooftop Index Development
 
 ## Dependencies
-- Python and Jupyter Notebooks
+- Python 3 and Jupyter Notebooks
 - All other python dependencies are listed in the `requirements.txt` file
-- Make sure the `pygdal` version matches the gdal version on your local machine. 
+- Make sure the `pygdal` version matches the `gdal` version on your local machine. 
 
 ## Conceptual diagram
 ![concept diagram](imgs/RooftopIndexWorkflow.jpg)
@@ -58,3 +58,6 @@ TBD
 
 ### Parapet
 TBD
+
+### Final index
+Based on a multi-criteria decision analysis from the 8 features described above. 
