@@ -61,3 +61,17 @@ TBD
 
 ### Final index
 Based on a multi-criteria decision analysis from the 8 features described above. 
+
+## Algorithm
+
+1. Create geotiffs (e.g. height and slope)
+
+2. Create building footprints as vector data if they are not already available.
+
+3. Filter out roofs that are not relatively flat
+
+4. Disaggregate rooftops into flat areas and create vector data file
+
+5. Using diaggregated flat areas, calculate specified features for each area.
+
+6. Using the disaggregated flat areas vector file with all features added, calculate index using multi-criteria decision analysis.  
