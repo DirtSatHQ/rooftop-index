@@ -11,14 +11,14 @@
 ## Concept details
 
 ### Pitch Filter
-[Pitch filter POC notebook](roof_pitch/lidar_roof_pitch.ipynb)
+[Pitch filter POC notebook](poc/roof_pitch/lidar_roof_pitch.ipynb)
 
 Based on LiDAR data. Filter out any roofs that are not flat. 
 
 First, LiDAR elevation data is converted to slope using the gdal.DEMProcessing module. A rooftop is classified as flat if the number of pixels on a given rooftop that are less than or equal to **slope_threshold** make up more than **area_threshold** percent of the rooftop. **slope_threshold** is a hyperparameter defining the slope (in degrees) at which we consider a pixel to be flat. **area_threshold** is a hyperparameter defining the percentage of pixels on a rooftop that must be flat for a roof to be considered flat. 
 
 ### Flat Area ID (FAID)
-[FAID POC notebook](useable_area/flat_area.ipynb)
+[FAID POC notebook](poc/useable_area/flat_area.ipynb)
 
 Based on LiDAR data. Identify areas within building footprint that are flat and greater than 1000 sf. Output is a shapefile with an attribute that connects each polygon to a building footprint. 
 
@@ -28,7 +28,7 @@ To find contiguous flat areas, a raster of building height is smoothed with a ga
 
 
 ### Useable area
-[Useable area POC notebook](useable_area/flat_area.ipynb)
+[Useable area POC notebook](poc/useable_area/flat_area.ipynb)
 
 Based on LiDAR data. The area within a FAID that could be used to for a farm. 
 
@@ -38,10 +38,12 @@ Useable area is derived from each unique FAID. For a given FAID polygon, the are
 Based on LiDAR data. The average slope within a FAID.
 
 ### Load volume
-Based on LiDAR data. The volume of structures on top of a FAID. 
+[Load volume POC notebook](poc/load_capacity/load_capacity.ipynb)
+
+Load volume is created from the FAID and building footprint data. First, the inverse of the flat area is found by performing a spatial difference between the FAID and each building footprint. The height and area of each of the resulting polygons is then calculated and multiplied as an estimate of volume (assumes that all objects on rooftop are rectangular). Finally, the volume of all objects on a given building is summed, giving a total estimate of volume on a rooftop.
 
 ### Building height
-[Height POC notebook](roof_height/roof_height.ipynb)
+[Height POC notebook](poc/roof_height/roof_height.ipynb)
 
 Based on LiDAR data. The average height above ground surface of FAID.
 
@@ -51,13 +53,19 @@ This is calculated from a raster of structure height. If there is no height rast
 Based on Sentinel data. Greenness of the rooftop. 
 
 ### Closeness to a point
+[Closeness to a point POC notebook](poc/closeness_to_point/closeness_to_point.ipynb)
+
 Based on FAID and point data in vector format. 
+
+For a given FAID and a vector of points, this function finds the minimum distance to a point from the centroid of the FAID.
 
 ### Shadows and wind
 TBD
 
 ### Parapet
-TBD
+[Parapet detection POC notebook](poc/parapets/parapet_detection.ipynb)
+
+To detect parapets, a one meter buffer is placed inside each of the building footprints. For each buffer, the average slope is calculated. A higher average slope suggests that a parapet might be present. 
 
 ### Final index
 Based on a multi-criteria decision analysis from the 8 features described above. 
