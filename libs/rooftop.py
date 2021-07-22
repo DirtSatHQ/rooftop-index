@@ -92,8 +92,8 @@ class RooftopProc(object):
                                        add_stats={stat_name: self._zstats_flat_area,
                                                   'total_area': self._zstats_total_area})
       
-      gdf = self.add_zstats_to_gpd(zstats, self.bldgs, stat_name)
-      gdf = self.add_zstats_to_gpd(zstats, gdf, 'total_area')
+      gdf = self._add_zstats_to_gpd(zstats, self.bldgs, stat_name)
+      gdf = self._add_zstats_to_gpd(zstats, gdf, 'total_area')
       if convert == True:
          gdf[stat_name] = gdf[stat_name]*10.7639
          gdf['total_area'] = gdf['total_area']*10.7639
@@ -105,7 +105,7 @@ class RooftopProc(object):
       
       return gdf[['fid', 'total_area', stat_name, 'geometry']] 
 
-   def add_zstats_to_gpd(self, zstats, gdf, name):
+   def _add_zstats_to_gpd(self, zstats, gdf, name):
       """Adds json zstats to gdf as new column"""
       nlist = []
       for b in zstats:
@@ -117,7 +117,8 @@ class RooftopProc(object):
       return full_gdf
       
 
-   def flat_area_disaggregator(bldgs):
+   def flat_area_disaggregator(self):
+      
       pass
 
    def feature1():
