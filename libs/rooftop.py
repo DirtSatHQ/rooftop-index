@@ -110,8 +110,9 @@ class RooftopProc(object):
       gdf[stat_name + '_perc'] = (gdf[stat_name]/gdf['total_area'])*100
       gdf['flat'] = gdf[stat_name + '_perc'] > pitch_area_threshold
       gdf = gdf.loc[gdf['flat']]
-      
-      return gdf[[self.bldgs_id, 'total_area', stat_name, 'geometry']] 
+      flat_bldgs = gdf[[self.bldgs_id, 'total_area', stat_name, 'geometry']] 
+      self.flat_bldgs = flat_bldgs
+      return flat_bldgs
 
    def _add_zstats_to_gpd(self, zstats, gdf, name, join_col):
       """Adds json zstats to gdf as new column
@@ -215,7 +216,8 @@ class RooftopProc(object):
       # Filter buildings with an area smaller than 1000 Sq. Ft.
       joined['flat_area'] = joined['geometry'].area * 10.7639
       joined = joined[joined['flat_area'] > fa_area_thresh]
-      joined['faid'] = np.arange(1, len(joined) +1, dtype=int)
+      joined = joined.sort_values(by='fid')
+      joined['faid'] = range(joined.shape[0])
       
       self.S3.write_gdf_to_s3(joined, self.main_dir + out_fname)
       
@@ -231,6 +233,7 @@ class RooftopProc(object):
                                  stats=['mean'])
       gdf = self._add_zstats_to_gpd(zstats, rooftops, 'mean', 'faid')
       gdf.rename(columns={'mean': 'avg_slope'}, inplace=True)
+      print('Adding average slope feature now.')
       return gdf
 
    def feature_height(self, rooftops):
@@ -243,15 +246,124 @@ class RooftopProc(object):
                                        stats='median')
       gdf = self._add_zstats_to_gpd(zstats, rooftops, 'median', 'faid')
       gdf.rename(columns={'median': 'height'}, inplace=True)
+      print('Adding average height feature now.')
       return gdf
+   
+   def _distance_to_nearest_pt(self, rooftops, pts, colname):
+      rooftops['centers'] = rooftops.centroid
+      rooftops[colname] = rooftops['centers'].apply(lambda x: min([x.distance(y) for y in pts['geometry']]))
+      rooftops.drop(columns='centers', inplace=True)
+      return rooftops
+   
+   def feature_closeness_to_pts(self, rooftops, ctp_paths):
+      for p in ctp_paths:
+         colname = p.split('.')[0]
+         pts = self.S3.read_shp_from_s3_as_gpd(self.main_dir + p).to_crs(self.epsg) 
+         rooftops = self._distance_to_nearest_pt(rooftops, pts, colname)
+         print('Adding closeness to ' + colname + ' feature now.') 
+      return rooftops   
+   
+   
+   def feature_volume_on_roof(self, rooftops):
+      interiors = self._find_interior_holes(rooftops)
+      interiors = self.convert_multipgons_to_pgons(interiors)
+      int_height = self._calc_height(interiors, 'interior_height')
+      roof_height = self._calc_height(rooftops, 'roof_height')
+      roof_volume = self._calc_volume(roof_height, int_height)
+      print('Adding volume on roof feature now.')
+      return roof_volume
+   
+   def _find_interior_holes(self, rooftops):
+      # Find all interior rings within polygon
+      out = []
+      for geom in rooftops['geometry']:
+         interior_coords = []
+         for interior in geom.interiors:
+               interior_coords.append(interior.coords)
 
-   def feature_builder(self, rooftops, features):
+         out.append(interior_coords)
+
+      # Convert interiors of each polygon into MultiPolygons so they can each be associated with an FAID.
+      interiors = []
+      for geom in out:
+         interiors.append(MultiPolygon([Polygon(geom[i]) for i, _ in enumerate(geom)]))    
+
+      # Create GDF of interior polygons
+      interiors = pd.DataFrame({'faid': rooftops['faid'], 'geometry': interiors})
+      interiors = gpd.GeoDataFrame(interiors)
+      interiors = interiors.drop_duplicates()
+      
+      return interiors
+   
+   def _calc_height(self, gdf, colname):      
+
+      affine = self.meta['transform']
+      nodata = self.meta['nodata']
+      zstats = rasterstats.zonal_stats(gdf, self.height_arr, affine=affine,
+                                       nodata=nodata, geojson_out=True, 
+                                       stats='median')
+      new_gdf = pd.DataFrame(gdf['faid']) 
+      #! Having trouble with the next line because no unique ID
+      new_gdf = self._add_zstats_to_gpd(zstats, new_gdf, 'median', 'faid')
+      new_gdf.rename(columns={'median': colname}, inplace=True)
+      return gdf
+   
+   def _calc_volume(self, rooftops, interiors):
+      interiors['interior_area'] = interiors['geometry'].area * 10.7639
+      merged = pd.merge(interiors.drop(columns='geometry'), rooftops, on='faid')
+      merged['rise'] = merged['interior_height'] - merged['faid_height']
+      merged['rise'] = [0 if x < 0 else x for x in merged['rise']]
+      merged['volume'] = merged['rise'] * merged['interior_area']
+      test = merged[['faid', 'volume', 'geometry']]
+      output = test.dissolve(by='faid', aggfunc='sum')
+    
+      return output  
+   
+   def _create_bldg_buffer_pgon(self):
+      """Used in feature_parapet()"""
+      
+      # Make gdf that is a boundary of the building
+      bounds = self.flat_bldgs['geometry']
+      bounds = gpd.GeoDataFrame({'geometry': bounds, 'fid': self.flat_bldgs['fid']})
+
+      # Make gdf that is a 1m buffer around the inside of the building.
+      buff = self.flat_bldgs['geometry'].buffer(-1)
+      buff = gpd.GeoDataFrame({'geometry': buff, 'fid': self.flat_bldgs['fid']})
+      
+      # Join the two gdfs to make a ring polygon around the edge of the building
+      parapet = gpd.overlay(bounds, buff, how='difference')
+      parapet['area'] = parapet['geometry'].area
+   
+      return parapet
+   
+   def feature_parapet(self, rooftops):
+      
+      affine = self.meta['transform']
+      nodata = self.meta['nodata']
+      parapet = self._create_bldg_buffer_pgon()
+      zstats = rasterstats.zonal_stats(parapet, self.slope_arr, affine=affine,
+                                       nodata=nodata, geojson_out=True, 
+                                       stats='median')
+      new_gdf = pd.DataFrame(self.flat_bldgs['fid'])
+      gdf = self._add_zstats_to_gpd(zstats, new_gdf, 'median', 'fid')
+      gdf.rename(columns={'median': 'parapet_slope'}, inplace=True)
+      full_gdf = rooftops.merge(gdf, on='fid')
+      
+      print('Adding average parapet feature now.')   
+      return full_gdf   
+
+   def feature_builder(self, rooftops, features, **kwargs):
       for f in features:
          func = eval('self.feature_' + f)
-         rooftops = func(rooftops)
+         if f == 'closeness_to_pts':
+            if 'ctp_paths' in kwargs.keys():
+               rooftops = func(rooftops, kwargs['ctp_paths'])
+            else:
+               print('Oops, there are no ctp_paths for the closeness_to_pts feature.')
+         else:
+            rooftops = func(rooftops)
          
       return rooftops
          
-
    def index_builder():
       pass
