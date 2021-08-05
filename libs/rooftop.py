@@ -130,7 +130,10 @@ class RooftopProc(object):
          nlist.append(b_new)
          
       new_gdf = gpd.GeoDataFrame(nlist, columns=[join_col, name])
-      full_gdf = gdf.merge(new_gdf, on=join_col)
+      if gdf.empty:
+         full_gdf = new_gdf
+      else:
+         full_gdf = gdf.merge(new_gdf, on=join_col)
       return full_gdf
    
    def polygonize_raster(self, arr):
@@ -246,7 +249,7 @@ class RooftopProc(object):
                                        stats='median')
       gdf = self._add_zstats_to_gpd(zstats, rooftops, 'median', 'faid')
       gdf.rename(columns={'median': 'height'}, inplace=True)
-      print('Adding average height feature now.')
+      print('Adding median height feature now.')
       return gdf
    
    def _distance_to_nearest_pt(self, rooftops, pts, colname):
@@ -256,6 +259,12 @@ class RooftopProc(object):
       return rooftops
    
    def feature_closeness_to_pts(self, rooftops, ctp_paths):
+      """Calculates closeness to a series of points. Used in feature_builder().
+      
+      Args: 
+         ctp_paths (list): list of file names in S3 bucket to use as points. A
+            separate feature is created for each file in the ctp_paths variable. 
+      """
       for p in ctp_paths:
          colname = p.split('.')[0]
          pts = self.S3.read_shp_from_s3_as_gpd(self.main_dir + p).to_crs(self.epsg) 
@@ -263,8 +272,9 @@ class RooftopProc(object):
          print('Adding closeness to ' + colname + ' feature now.') 
       return rooftops   
    
-   
    def feature_volume_on_roof(self, rooftops):
+      """Calculates volume of stuff on top of roof. Used in feature_builder()"""
+      
       interiors = self._find_interior_holes(rooftops)
       interiors = self.convert_multipgons_to_pgons(interiors)
       int_height = self._calc_height(interiors, 'interior_height')
@@ -295,28 +305,31 @@ class RooftopProc(object):
       
       return interiors
    
-   def _calc_height(self, gdf, colname):      
+   def _calc_height(self, gdf, colname):
+      """Calculates median height of surface"""      
 
       affine = self.meta['transform']
       nodata = self.meta['nodata']
       zstats = rasterstats.zonal_stats(gdf, self.height_arr, affine=affine,
                                        nodata=nodata, geojson_out=True, 
                                        stats='median')
-      new_gdf = pd.DataFrame(gdf['faid']) 
-      #! Having trouble with the next line because no unique ID
-      new_gdf = self._add_zstats_to_gpd(zstats, new_gdf, 'median', 'faid')
+      false_gdf = pd.DataFrame() 
+      new_gdf = self._add_zstats_to_gpd(zstats, false_gdf, 'median', 'faid')
       new_gdf.rename(columns={'median': colname}, inplace=True)
       return gdf
    
    def _calc_volume(self, rooftops, interiors):
+      """Calculates volume of interior stuff on a roof"""
+      #! This function does not work because of changes in dataframe structure 
+      
       interiors['interior_area'] = interiors['geometry'].area * 10.7639
-      merged = pd.merge(interiors.drop(columns='geometry'), rooftops, on='faid')
+      merged = pd.merge(interiors.drop(columns='geometry'), rooftops, on='faid', how='outer')
       merged['rise'] = merged['interior_height'] - merged['faid_height']
       merged['rise'] = [0 if x < 0 else x for x in merged['rise']]
       merged['volume'] = merged['rise'] * merged['interior_area']
+      merged['volume'] = [0 if np.isnan(x) else x for x in merged['volume']] 
       test = merged[['faid', 'volume', 'geometry']]
       output = test.dissolve(by='faid', aggfunc='sum')
-    
       return output  
    
    def _create_bldg_buffer_pgon(self):
@@ -337,6 +350,8 @@ class RooftopProc(object):
       return parapet
    
    def feature_parapet(self, rooftops):
+      """Calculates the median slope of a one meter buffer around the edge of 
+      of a building (not a rooftop). Used in feature_builder(). """
       
       affine = self.meta['transform']
       nodata = self.meta['nodata']
@@ -349,10 +364,12 @@ class RooftopProc(object):
       gdf.rename(columns={'median': 'parapet_slope'}, inplace=True)
       full_gdf = rooftops.merge(gdf, on='fid')
       
-      print('Adding average parapet feature now.')   
+      print('Adding parapet feature now.')   
       return full_gdf   
 
    def feature_builder(self, rooftops, features, **kwargs):
+      """Main function to build features"""
+      
       for f in features:
          func = eval('self.feature_' + f)
          if f == 'closeness_to_pts':
