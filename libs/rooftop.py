@@ -130,10 +130,7 @@ class RooftopProc(object):
          nlist.append(b_new)
          
       new_gdf = gpd.GeoDataFrame(nlist, columns=[join_col, name])
-      if gdf.empty:
-         full_gdf = new_gdf
-      else:
-         full_gdf = gdf.merge(new_gdf, on=join_col)
+      full_gdf = gdf.merge(new_gdf, on=join_col)
       return full_gdf
    
    def polygonize_raster(self, arr):
@@ -272,17 +269,6 @@ class RooftopProc(object):
          print('Adding closeness to ' + colname + ' feature now.') 
       return rooftops   
    
-   def feature_volume_on_roof(self, rooftops):
-      """Calculates volume of stuff on top of roof. Used in feature_builder()"""
-      
-      interiors = self._find_interior_holes(rooftops)
-      interiors = self.convert_multipgons_to_pgons(interiors)
-      int_height = self._calc_height(interiors, 'interior_height')
-      roof_height = self._calc_height(rooftops, 'roof_height')
-      roof_volume = self._calc_volume(roof_height, int_height)
-      print('Adding volume on roof feature now.')
-      return roof_volume
-   
    def _find_interior_holes(self, rooftops):
       # Find all interior rings within polygon
       out = []
@@ -306,31 +292,46 @@ class RooftopProc(object):
       return interiors
    
    def _calc_height(self, gdf, colname):
-      """Calculates median height of surface"""      
-
+      """Calculates median height of surface"""            
+      
       affine = self.meta['transform']
       nodata = self.meta['nodata']
       zstats = rasterstats.zonal_stats(gdf, self.height_arr, affine=affine,
                                        nodata=nodata, geojson_out=True, 
                                        stats='median')
-      false_gdf = pd.DataFrame() 
-      new_gdf = self._add_zstats_to_gpd(zstats, false_gdf, 'median', 'faid')
+      new_gdf = self._add_zstats_to_gpd(zstats, gdf, 'median', 'intid')
       new_gdf.rename(columns={'median': colname}, inplace=True)
-      return gdf
+      return new_gdf 
+   
+   def feature_volume_on_roof(self, rooftops):
+      """Calculates volume of stuff on top of roof. Used in feature_builder()"""
+      
+      # Check to make sure rooftop height has already been calculated. 
+      if 'height' not in rooftops.columns:
+         raise ValueError('You must include height as a feature before calculating volume.')
+      
+      interiors = self._find_interior_holes(rooftops)
+      interiors = self.convert_multipgons_to_pgons(interiors)
+      interiors['intid'] = range(1, len(interiors) + 1)
+      int_height = self._calc_height(interiors, 'interior_height')
+      new_gdf = self._calc_volume(rooftops, int_height)
+      print('Adding volume on roof feature now.')
+      return new_gdf
    
    def _calc_volume(self, rooftops, interiors):
       """Calculates volume of interior stuff on a roof"""
-      #! This function does not work because of changes in dataframe structure 
       
       interiors['interior_area'] = interiors['geometry'].area * 10.7639
       merged = pd.merge(interiors.drop(columns='geometry'), rooftops, on='faid', how='outer')
-      merged['rise'] = merged['interior_height'] - merged['faid_height']
+      merged['rise'] = merged['interior_height'] - merged['height']
       merged['rise'] = [0 if x < 0 else x for x in merged['rise']]
       merged['volume'] = merged['rise'] * merged['interior_area']
-      merged['volume'] = [0 if np.isnan(x) else x for x in merged['volume']] 
-      test = merged[['faid', 'volume', 'geometry']]
-      output = test.dissolve(by='faid', aggfunc='sum')
-      return output  
+      merged['volume'] = [0 if np.isnan(x) else x for x in merged['volume']]
+      clean = merged[['faid', 'volume', 'geometry']]
+      volume = clean.dissolve(by='faid', aggfunc='sum')
+      volume.drop(columns=['geometry'], inplace=True)
+      updated = pd.merge(rooftops, volume, on='faid')
+      return updated  
    
    def _create_bldg_buffer_pgon(self):
       """Used in feature_parapet()"""
