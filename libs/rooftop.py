@@ -8,6 +8,10 @@ import subprocess as sp
 import os
 import shutil
 from shapely.geometry import Polygon, MultiPolygon
+from sklearn.preprocessing import MinMaxScaler
+from skcriteria import Data, MIN
+from skcriteria.madm import closeness
+
 
 class RooftopProc(object):
 
@@ -20,6 +24,7 @@ class RooftopProc(object):
       self.epsg = self.meta['crs'].to_epsg()
       self.bldgs = S3.read_shp_from_s3_as_gpd(main_dir + bldgs_fname).to_crs(self.epsg)
       self.bldgs_id = bldgs_id
+      self.col_names = []
       
    def create_slope_arr(self, slope_fname):
       """Calculates slope of DSM raster. Returns as numpy array and writes results 
@@ -79,14 +84,12 @@ class RooftopProc(object):
       affine = self.meta['transform']
       return total_count * affine[0] * -affine[4]
 
-   def pitched_roof_filter(self, pitch_slope_threshold=11, 
-                           pitch_area_threshold=9, convert=True):
+   def pitched_roof_filter(self, pitch_slope_threshold=11, pitch_area_threshold=9):
       """Filters out roofs that are not flat based on pst and pat hyperparameters
 
       Args:
           pitch_slope_threshold (int, optional): hyperparameter. Defaults to 11.
           pitch_area_threshold (int, optional): hyperparameter. Defaults to 9.
-          convert (bool, optional): convert from meters to feet. Defaults to True.
 
       Returns:
           gpd: Geopandas dataframe of buildings with flat(ish) roofs
@@ -102,9 +105,6 @@ class RooftopProc(object):
       
       gdf = self._add_zstats_to_gpd(zstats, self.bldgs, stat_name, self.bldgs_id)
       gdf = self._add_zstats_to_gpd(zstats, gdf, 'total_area', self.bldgs_id)
-      if convert == True:
-         gdf[stat_name] = gdf[stat_name]*10.7639
-         gdf['total_area'] = gdf['total_area']*10.7639
          
       gdf = gdf.astype({stat_name: np.float64, 'total_area':np.float64}, copy=True)
       gdf[stat_name + '_perc'] = (gdf[stat_name]/gdf['total_area'])*100
@@ -214,11 +214,12 @@ class RooftopProc(object):
          
       # Calculate area and remove polygons smaller than 1000 sq. ft. 
       # Filter buildings with an area smaller than 1000 Sq. Ft.
-      joined['flat_area'] = joined['geometry'].area * 10.7639
+      joined['flat_area'] = joined['geometry'].area 
       joined = joined[joined['flat_area'] > fa_area_thresh]
       joined = joined.sort_values(by='fid')
       joined['faid'] = range(joined.shape[0])
       
+      self.col_names.append(('flat_area', False))
       self.S3.write_gdf_to_s3(joined, self.main_dir + out_fname)
       
       return joined      
@@ -233,6 +234,8 @@ class RooftopProc(object):
                                  stats=['mean'])
       gdf = self._add_zstats_to_gpd(zstats, rooftops, 'mean', 'faid')
       gdf.rename(columns={'mean': 'avg_slope'}, inplace=True)
+      self.col_names.append(('avg_slope', True))
+
       print('Adding average slope feature now.')
       return gdf
 
@@ -246,6 +249,7 @@ class RooftopProc(object):
                                        stats='median')
       gdf = self._add_zstats_to_gpd(zstats, rooftops, 'median', 'faid')
       gdf.rename(columns={'median': 'height'}, inplace=True)
+      self.col_names.append(('height', False))
       print('Adding median height feature now.')
       return gdf
    
@@ -264,6 +268,7 @@ class RooftopProc(object):
       """
       for p in ctp_paths:
          colname = p.split('.')[0]
+         self.col_names.append((colname, False))
          pts = self.S3.read_shp_from_s3_as_gpd(self.main_dir + p).to_crs(self.epsg) 
          rooftops = self._distance_to_nearest_pt(rooftops, pts, colname)
          print('Adding closeness to ' + colname + ' feature now.') 
@@ -321,7 +326,7 @@ class RooftopProc(object):
    def _calc_volume(self, rooftops, interiors):
       """Calculates volume of interior stuff on a roof"""
       
-      interiors['interior_area'] = interiors['geometry'].area * 10.7639
+      interiors['interior_area'] = interiors['geometry'].area 
       merged = pd.merge(interiors.drop(columns='geometry'), rooftops, on='faid', how='outer')
       merged['rise'] = merged['interior_height'] - merged['height']
       merged['rise'] = [0 if x < 0 else x for x in merged['rise']]
@@ -331,6 +336,8 @@ class RooftopProc(object):
       volume = clean.dissolve(by='faid', aggfunc='sum')
       volume.drop(columns=['geometry'], inplace=True)
       updated = pd.merge(rooftops, volume, on='faid')
+
+      self.col_names.append(('volume', False))
       return updated  
    
    def _create_bldg_buffer_pgon(self):
@@ -363,6 +370,8 @@ class RooftopProc(object):
       new_gdf = pd.DataFrame(self.flat_bldgs['fid'])
       gdf = self._add_zstats_to_gpd(zstats, new_gdf, 'median', 'fid')
       gdf.rename(columns={'median': 'parapet_slope'}, inplace=True)
+      self.col_names.append(('parapet_slope', True))
+
       full_gdf = rooftops.merge(gdf, on='fid')
       
       print('Adding parapet feature now.')   
@@ -382,6 +391,37 @@ class RooftopProc(object):
             rooftops = func(rooftops)
          
       return rooftops
+
+   @staticmethod
+   def rescale(l, invert=False, wts=None):
+      scaler = MinMaxScaler()
+      arr = np.array(l).reshape(-1, 1)
+      arr = arr * -1 if invert else arr
+      scaler.fit(arr)
+      return scaler.transform(arr)
          
-   def index_builder():
-      pass
+   def index_builder(self, full_features, wts):
+      mcda = full_features.copy()
+      geom = mcda['geometry']
+
+      mcda = mcda.set_index('faid')
+      mcda = mcda[[x[0] for x in self.col_names]]
+
+      for cname, inv in self.col_names:
+         mcda[cname] = self.rescale(mcda[cname], inv)
+
+      mcda = mcda.rank(method='min')
+      crit = [MIN] * len(mcda.columns)
+
+      if not wts:
+         wts = [1/len(mcda.columns)] * len(mcda.columns)
+
+      mca_data = Data(mcda.values, crit, anames=mcda.index, cnames=mcda.columns, weights=wts)
+
+      dm = closeness.TOPSIS()
+      dec = dm.decide(mca_data)
+      mcda['vulnerability'] = dec.e_.closeness
+      mcda['vul_rank'] = dec.rank_
+      mcda['geometry'] = geom
+
+      return mcda
