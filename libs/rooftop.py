@@ -23,6 +23,8 @@ class RooftopProc(object):
       self.meta = self.dsm_rio.meta
       self.epsg = self.meta['crs'].to_epsg()
       self.bldgs = S3.read_shp_from_s3_as_gpd(main_dir + bldgs_fname).to_crs(self.epsg)
+      if bldgs_id not in self.bldgs.columns:
+         self.bldgs[bldgs_id] = range(len(self.bldgs))
       self.bldgs_id = bldgs_id
       self.col_names = []
       
@@ -400,7 +402,7 @@ class RooftopProc(object):
       scaler.fit(arr)
       return scaler.transform(arr)
          
-   def index_builder(self, full_features, wts):
+   def index_builder(self, full_features, wts=None):
       mcda = full_features.copy()
       geom = mcda['geometry']
 

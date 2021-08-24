@@ -1,5 +1,6 @@
 #%%
 import boto3
+from pathlib import Path
 import rasterio
 import fiona
 from fiona.session import AWSSession
@@ -91,7 +92,6 @@ class S3Helper(object):
         
     def write_gdf_to_s3(self, gdf, path):
         """Writes geopandas dataframe to S3 as a zipped shapefile
-
         Args:
             gdf (gdf): Geopandas DataFrame to be written S3 bucket
             path (str): full path including filename (e.g. missoula/geospatial/test.zip)
