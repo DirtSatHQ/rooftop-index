@@ -60,7 +60,7 @@ Based on FAID and point data in vector format.
 For a given FAID and a vector of points, this function finds the minimum distance to a point from the centroid of the FAID.
 
 ### Shadows and wind
-TBD
+Not yet implemented.
 
 ### Parapet
 [Parapet detection POC notebook](poc/parapets/parapet_detection.ipynb)
@@ -68,7 +68,7 @@ TBD
 To detect parapets, a one meter buffer is placed inside each of the building footprints. For each buffer, the average slope is calculated. A higher average slope suggests that a parapet might be present. 
 
 ### Final index
-Based on a multi-criteria decision analysis from the 8 features described above. 
+Based on a multi-criteria decision analysis (MCDA) from the 8 features described above. FAIDs that have optimal values for all of the above features will have a high rank, while FAIDs with sub-optimal values for all features will have a low rank. FAIDs with the highest rank are considered the best rooftops for urban greenspaces. For this process we use the Scikit-Criteria package that was made for performing MCDA analysis.
 
 ## Algorithm
 
