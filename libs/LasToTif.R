@@ -53,4 +53,3 @@ las_to_tif <- function(f_dir, out_dir, descriptor = 'lidar') {
     file.path(out_dir, paste0(descriptor, '_dsm.tif'))
   )
 }
-
