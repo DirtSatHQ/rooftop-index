@@ -1,3 +1,4 @@
+from shapely.geometry import Polygon, MultiPolygon
 import richdem as rd
 import pandas as pd
 import numpy as np
@@ -7,7 +8,6 @@ import rasterio
 import subprocess as sp
 import os
 import shutil
-from shapely.geometry import Polygon, MultiPolygon
 from sklearn.preprocessing import MinMaxScaler
 from skcriteria import Data, MIN
 from skcriteria.madm import closeness
@@ -425,5 +425,8 @@ class RooftopProc(object):
       mcda['vulnerability'] = dec.e_.closeness
       mcda['vul_rank'] = dec.rank_
       mcda['geometry'] = geom
+      mcda = gpd.GeoDataFrame(mcda) if not isinstance(mcda, gpd.GeoDataFrame) else mcda
+
+      self.S3.write_gdf_to_s3(mcda, self.main_dir + 'main_index.zip')
 
       return mcda
