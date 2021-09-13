@@ -409,24 +409,30 @@ class RooftopProc(object):
       mcda = mcda.set_index('faid')
       mcda = mcda[[x[0] for x in self.col_names]]
 
+      orig_cols = []
+      tmp_cols = []
       for cname, inv in self.col_names:
-         mcda[cname] = self.rescale(mcda[cname], inv)
+         orig_cols.append(cname)
+         tmp_cols.append(cname+'_tmp')
+         mcda[cname+'_tmp'] = self.rescale(mcda[cname], inv)
 
-      mcda = mcda.rank(method='min')
-      crit = [MIN] * len(mcda.columns)
+
+      mcda_tmp = mcda[tmp_cols].rank(method='min')
+      crit = [MIN] * len(mcda_tmp.columns)
 
       if not wts:
-         wts = [1/len(mcda.columns)] * len(mcda.columns)
+         wts = [1/len(mcda_tmp.columns)] * len(mcda_tmp.columns)
 
-      mca_data = Data(mcda.values, crit, anames=mcda.index, cnames=mcda.columns, weights=wts)
+      mca_data = Data(mcda_tmp.values, crit, anames=mcda_tmp.index, cnames=mcda_tmp.columns, weights=wts)
 
       dm = closeness.TOPSIS()
       dec = dm.decide(mca_data)
+
       mcda['vulnerability'] = dec.e_.closeness
       mcda['vul_rank'] = dec.rank_
       mcda['geometry'] = geom
+      mcda = mcda.drop(columns=tmp_cols)
       mcda = gpd.GeoDataFrame(mcda) if not isinstance(mcda, gpd.GeoDataFrame) else mcda
-
       self.S3.write_gdf_to_s3(mcda, self.main_dir + 'main_index.zip')
 
       return mcda
