@@ -4,6 +4,14 @@
 - Python 3 and Jupyter Notebooks
 - All other python dependencies are listed in the `requirements.txt` file
 - Make sure the `pygdal` version matches the `gdal` version on your local machine. 
+- To run the index, AWS CLI S3 bucket access is needed. 
+    - Alternatively, the code can be run on the DirtSat EC2 instance that is linked to the S3 buckets.
+
+## Installation
+- This is a Python package that must be installed to run the index for a given location.
+- To install the package, clone the repository: `git clone https://github.com/DirtSatHQ/rooftop-index.git`
+- Navigate to the cloned directory: `cd /path/to/rooftop-index`
+- Install with pip: `pip install .`
 
 ## Conceptual diagram
 ![concept diagram](imgs/RooftopIndexWorkflow.jpg)
