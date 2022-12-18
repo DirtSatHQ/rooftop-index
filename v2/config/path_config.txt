@@ -1,0 +1,2 @@
+roi,dsm,dem,lst,building_footprint,out_name
+~/dirtSAT/data/raw/roi/roi.shp,~/dirtSAT/data/raw/dsm/hh_NYC_020.tif,~/dirtSAT/data/raw/dem/be_NYC_020.tif,~/dirtSAT/data/raw/lst/NYC_example_summer_LST_100scaler.tif,~/dirtSAT/data/raw/building_footprint_vectors/NYC_building_footprints/geo_export_f4710627-6805-4217-9d01-d0a19967f09f.shp,NYC_example
