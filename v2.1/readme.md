@@ -45,6 +45,13 @@ Summary, if multi-domains are required run 1_1, 1_2, and 1_3, if the entire doma
 * /R/4_merge_data_and_run_TOPSIS.R - This is the final script. This script merges the tiled TOPSIS input geojson files from 3_1, provides methods to filer larger domains by areas of interest (such as CUNY), compute the TOPSIS rank and generate interactive maps in HTML widget form. 
 
 
+## Additional scripts: 
+Two further scripts were added to specifically associated physical Google Maps API addresses with the TOPSIS results so a verbal green score can be returned by DirtSat when a potential user enters an address.
+These scripts are:
+* /R/5_addresmerge.R - This script associates a physical address to each TOPSIS results returned by /R/4_merge_data_and_run_TOPSIS.R
+* /R/6_output_formatting_for_bubble.R - This script reformats TOPSIS output to a simple file containing property addresses and matching green score so it can be directly uploaded to the Bubble database.
+
+
 ## Extra considerations:
 
 
