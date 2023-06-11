@@ -26,10 +26,8 @@ nyc_buildings_csv = nyc_buildings_nona %>% dplyr::select(h_no,hno_suffix,full_st
                                       application = "",bids = "",company= "",cre_report = "",financing = "",img_map = "",members = "",name = "",notified="",
                                       score = case_when(`TOPSIS MCDA Rank (1 = Best)`< 6000 ~ 'A',`TOPSIS MCDA Rank (1 = Best)`< 12000 ~ 'B',
                                                         `TOPSIS MCDA Rank (1 = Best)`< 18000 ~ 'C',`TOPSIS MCDA Rank (1 = Best)`>= 18000 ~ 'D'),
-                                      score_verbal = case_when(`TOPSIS MCDA Rank (1 = Best)`< 6000 ~ 'High potential',
-                                                               `TOPSIS MCDA Rank (1 = Best)`< 12000 ~ 'High potential',
-                                                               `TOPSIS MCDA Rank (1 = Best)`< 18000 ~ 'Average potential',
-                                                               `TOPSIS MCDA Rank (1 = Best)`>= 18000 ~ 'Low potential'),
+                                      score_verbal = case_when(`TOPSIS MCDA Rank (1 = Best)`< 12000 ~ 'High potential',
+                                                               `TOPSIS MCDA Rank (1 = Best)`>= 12000 ~ 'Average potential'),
                                       start_date = "", status = "", `Created Date` = "", `Modified Date` = "", Slug = "", `Created By` = "", `Unique id`=""
                                       )
 
