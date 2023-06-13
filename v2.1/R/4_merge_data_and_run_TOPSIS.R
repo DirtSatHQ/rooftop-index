@@ -22,34 +22,34 @@ library(leafpop) #stylizing map widget
 # NYC input parameters
 # #define if you want to filter the tiled results (here T as we are interested in the 
 # #CUNY buildings that were processed across the entire NYC run)
-# filter_tiled_input = T
+filter_tiled_input = T
 # #if true, define the footprints of intterest
-# footprints_of_interest_file = '/mnt/hdd/data/dirtSAT_NYC_data/raw/CUNY/cuny_buildings_2019/cuny_buildings_2019.shp' #in this case CUNY
+footprints_of_interest_file = '/Users/nathaliedescusse-brown/Documents/DirtSat/Engineering/Index/rooftop-index/v2.1/R/building_footprints_shape/building_0716.shp'
 # #crs template for transfomations
-# crs_template_file = '/mnt/hdd/data/dirtSAT_NYC_data/processed/raster/tiled_dem/dem_clipped_001.tif'
+crs_template_file = '/Volumes/NDB_HDD/processed/raster/tiled_dem/dem_clipped_001.tif'
 # #define where the tiled TOPSIS input is
-# tiled_TOPSIS_input_dir = '/mnt/hdd/data/dirtSAT_NYC_data/final/tiled_TOPSIS_input'
+tiled_TOPSIS_input_dir = '/Volumes/NDB_HDD/final/tiled_TOPSIS_input'
 # #define where the LST raster is for mapping
-# lst_file = '/mnt/hdd/data/dirtSAT_NYC_data/raw/lst/NYC_full_summer_LST_100scaler.tif'
+lst_file = '/Volumes/NDB_HDD/raw/lst/NYC_full_summer_LST_100scaler.tif'
 # #define the locations for export of final widget and geojson file
-# out_widget_file = '/mnt/hdd/data/dirtSAT_NYC_data/final/widget/CUNY_results.html'
-# out_geojson_file = '/mnt/hdd/data/dirtSAT_NYC_data/final/final_geospatial/final_CUNY_results.geojson'
+out_widget_file = '/Volumes/NDB_HDD/final/widget/NYC_results.html'
+out_geojson_file = '/Volumes/NDB_HDD/final/final_geospatial/final_NYC_results.geojson'
 
 # MIAMI input parameters
-#define if you want to filter the tiled results (here T as we are interested in the 
+#define if you want to filter the tiled results (here T as we are interested in the
 #CUNY buildings that were processed across the entire NYC run)
-filter_tiled_input = F
-#if true, define the footprints of intterest
-footprints_of_interest_file = '/mnt/hdd/data/dirtSAT_Miami_data/processed/vector/tiled_footprints/Miami_tiled_footprint_001.geojson'
-#crs template for transfomations
-crs_template_file = '/mnt/hdd/data/dirtSAT_Miami_data/processed/raster/tiled_dem/dem_clipped_001.tif'
-#define where the tiled TOPSIS input is
-tiled_TOPSIS_input_dir = '/mnt/hdd/data/dirtSAT_Miami_data/final/tiled_TOPSIS_input'
-#define where the LST raster is for mapping
-lst_file = '/mnt/hdd/data/dirtSAT_Miami_data/raw/lst/Miami_full_summer_LST_100scaler.tif'
-#define the locations for export of final widget and geojson file
-out_widget_file = '/mnt/hdd/data/dirtSAT_Miami_data/final/widget/Miami_results.html'
-out_geojson_file = '/mnt/hdd/data/dirtSAT_Miami_data/final/final_geospatial/final_Miami_results.geojson'
+# filter_tiled_input = F
+# #if true, define the footprints of intterest
+# footprints_of_interest_file = '/mnt/hdd/data/dirtSAT_Miami_data/processed/vector/tiled_footprints/Miami_tiled_footprint_001.geojson'
+# #crs template for transfomations
+# crs_template_file = '/mnt/hdd/data/dirtSAT_Miami_data/processed/raster/tiled_dem/dem_clipped_001.tif'
+# #define where the tiled TOPSIS input is
+# tiled_TOPSIS_input_dir = '/mnt/hdd/data/dirtSAT_Miami_data/final/tiled_TOPSIS_input'
+# #define where the LST raster is for mapping
+# lst_file = '/mnt/hdd/data/dirtSAT_Miami_data/raw/lst/Miami_full_summer_LST_100scaler.tif'
+# #define the locations for export of final widget and geojson file
+# out_widget_file = '/mnt/hdd/data/dirtSAT_Miami_data/final/widget/Miami_results.html'
+# out_geojson_file = '/mnt/hdd/data/dirtSAT_Miami_data/final/final_geospatial/final_Miami_results.geojson'
 
 #######################################################
 #              import crs template                    #
@@ -80,20 +80,22 @@ merged = tiled_results %>%
   st_transform(., st_crs('EPSG:4326'))
 
 #######################################################
-#                 extract CUNY data                   #
+#   extract CUNY data - comment out for whole of NYC  #
 #######################################################
 
-if(filter_tiled_input == T){
-  merged = merged %>%
-    filter(BBL %in% footprints_of_interest$base_bbl)
-}
+#Will get ranking for the whole of NYC though!!! Could you use percentiles for it to make sense
+
+#if(filter_tiled_input == T){
+#  merged = merged %>%
+#    filter(BBL %in% footprints_of_interest$base_bbl)
+#}
 
 #######################################################
 #               compute MCDA/TOPSIS                   #
 #######################################################
 
 #compute MCDA analysis - TOPSIS analysis
-#Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS) 
+#Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS)
 #is a multiple criteria decision analysis (MCDA) used here
 final_results = merged %>%
   #compute TOPSIS rank
@@ -109,13 +111,13 @@ final_results = merged %>%
            #min for ave_slope, we want flatter green spaces
            #max for ave_parapet_height, higher parapets = greater safety
            #max for flat_area_ft2, we want big green spaces
-           #min for load_volume, less shade from obstructions, pollution
+           #max for load_volume, as sign that rooftop can take more load
            #min for FAID_height_above_ground, overcome urban heat effect and minimize shade from adjustment buildings
            #max for FAID_under_100ft, 1 = less than 100ft, 0 = greater than
            #min for NDVI, want to de-prioritize already green roofs
-           #min for ave_lst, want cooler rooftops
+           #max for ave_lst, want rooftops to lower ave_lst
            #ASSUMES EQUAL WEIGHTING!!! (hense rep(1,6)) = 1 weight for each variable
-           TOPSIS(., rep(1,8), c('min', 'max', 'max', 'min', 'min', 'max', 'min','min')) %>%
+           TOPSIS(., rep(1,8), c('min', 'max', 'max', 'max', 'min', 'max', 'min','max')) %>%
            #convert back to tibble
            as_tibble() %>%
            #compute rank (higher rank = better)
@@ -145,8 +147,8 @@ final_results_top = final_results %>%
 #import NYC wide LST, descale and convert from C to F
 lst = (((rast(lst_file)/100)*9/5) + 32) %>%
   #convert to F
-  #reproject to match DEM 
-  project(., crs(crs_template), method = 'near') 
+  #reproject to match DEM
+  project(., crs(crs_template), method = 'near')
 
 #generate mappable LST dataset
 lst_map = lst %>%
@@ -159,13 +161,15 @@ lst_map = lst %>%
 #        map results and generate HTML widget         #
 #######################################################
 
-#plot results
-mapview_all = mapview(footprints_of_interest, col.regions = 'black', alpha.regions = 0.5, hide = TRUE, layer.name = 'Origninal Footprint', map.types = c('CartoDB.Positron','Esri.WorldImagery', 'OpenStreetMap'), legend = F)+
-  mapview(final_results, zcol = 'TOPSIS MCDA Rank (1 = Best)', layer.name = 'MCDA Rank', col.regions=list("forestgreen","yellow",'red'),
-          popup = popupTable(final_results %>% st_drop_geometry(), feature.id = FALSE, row.numbers = F, className = "mapview-popup"))+
-  mapview(final_results_top, zcol = 'TOPSIS MCDA Rank (1 = Best)', layer.name = 'MCDA Rank (TOP 5)', col.regions=list("forestgreen","yellow",'red'),
-          popup = popupTable(final_results_top %>% st_drop_geometry(), feature.id = FALSE, row.numbers = F, className = "mapview-popup"), hide = T, legend = F)+
-  mapview(lst_map, hide = T, layer.name = 'Summer LST (°F)', legend = T)
+#plot results - comment out map except for Top 5 as too many buildings to display on a map
+mapview_all = #mapview(footprints_of_interest, col.regions = 'black', alpha.regions = 0.5, hide = TRUE, layer.name = 'Origninal Footprint', map.types = c('CartoDB.Positron','Esri.WorldImagery', 'OpenStreetMap'), legend = F)
+# +
+#   mapview(final_results, zcol = 'TOPSIS MCDA Rank (1 = Best)', layer.name = 'MCDA Rank', col.regions=list("forestgreen","yellow",'red'),
+#           popup = popupTable(final_results %>% st_drop_geometry(), feature.id = FALSE, row.numbers = F, className = "mapview-popup"))+
+   mapview(final_results_top, zcol = 'TOPSIS MCDA Rank (1 = Best)', layer.name = 'MCDA Rank (TOP 5)', col.regions=list("forestgreen","yellow",'red'),
+           popup = popupTable(final_results_top %>% st_drop_geometry(), feature.id = FALSE, row.numbers = F, className = "mapview-popup"), hide = T, legend = F)
+#+
+#   mapview(lst_map, hide = T, layer.name = 'Summer LST (°F)', legend = T)
 
 # #write out widget
 mapshot(mapview_all, out_widget_file, embedresources = T, standalone = T)
