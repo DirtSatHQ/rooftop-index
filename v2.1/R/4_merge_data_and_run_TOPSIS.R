@@ -97,9 +97,25 @@ merged = tiled_results %>%
 #compute MCDA analysis - TOPSIS analysis
 #Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS)
 #is a multiple criteria decision analysis (MCDA) used here
-final_results = merged %>%
+
+# first we remove any row that contains NA for the following variables as it would cause issues with TOPSIS calculations: FAID_ave_slope, ave_parapet_height, 
+# FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi, FAID_ave_lst
+results_subset=merged %>%
   #compute TOPSIS rank
-  mutate(topsis_rank = merged %>%
+  #mutate(topsis_rank = merged %>%
+  #select appropriate data
+  dplyr::select(FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi, FAID_ave_lst) %>%
+  #remove geometry, restricts matrix transformation
+  st_drop_geometry() %>%
+  #convert to matrix
+  as.matrix()
+
+clean_results = merged[-unique(which(is.na(results_subset), arr.ind = T)[,1]),]
+
+# Then we can used the cleaned dataset to compute TOPSIS rankings
+final_results = clean_results %>%
+  #compute TOPSIS rank
+  mutate(topsis_score = clean_results %>%
            #select appropriate data
            dplyr::select(FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi, FAID_ave_lst) %>%
            #remove geometry, restricts matrix transformation
@@ -117,19 +133,17 @@ final_results = merged %>%
            #min for NDVI, want to de-prioritize already green roofs
            #max for ave_lst, want rooftops to lower ave_lst
            #ASSUMES EQUAL WEIGHTING!!! (hense rep(1,6)) = 1 weight for each variable
-           TOPSIS(., rep(1,8), c('min', 'max', 'max', 'max', 'min', 'max', 'min','max')) %>%
+         TOPSIS(., rep(1,8), c('min', 'max', 'max', 'max', 'min', 'max', 'min','max')) %>%
            #convert back to tibble
-           as_tibble() %>%
-           #compute rank (higher rank = better)
-           mutate(rank = rank(-value)) %$%
-           #select rank and bind to the table
-           rank) %>%
+           as_tibble() %>% mutate(score = value) %$% score) %>%
+  
+  mutate(topsis_rank = rank(-topsis_score))  %>%
   #bind NDVI to the results
   #mutate(NDVI = NDVI$NDVI) %>%
   #select data of interest
-  dplyr::select(topsis_rank, FAID, FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_ave_ndvi, FAID_ave_lst) %>%
+  dplyr::select(topsis_rank, topsis_score, FAID, FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_ave_ndvi, FAID_ave_lst) %>%
   #rename variables to human readable format
-  rename('TOPSIS MCDA Rank (1 = Best)' = topsis_rank, 'Average Slope of FAID (deg)' = FAID_ave_slope,
+  rename('TOPSIS MCDA Rank (1 = Best)' = topsis_rank,'TOPSIS score' = topsis_score, 'Average Slope of FAID (deg)' = FAID_ave_slope,
          'Average Building Parapet Height (ft)' = ave_parapet_height,'Flat, Usable Area (ft2)' = FAID_flat_area_ft2,
          'Rooftop Load Volume (ft3)' = load_volume, 'Average FAID Height Above Ground (ft)' = FAID_height_above_ground, 'NDVI' = FAID_ave_ndvi,
          'Average Summer Surface Temperature (F)' = FAID_ave_lst) %>%
