@@ -50,7 +50,8 @@ Two further scripts were added to specifically associated physical Google Maps A
 These scripts are:
 * /R/5_addresmerge.R - This script associates a physical address to each TOPSIS results returned by /R/4_merge_data_and_run_TOPSIS.R
 * /R/6_output_formatting_for_bubble.R - This script reformats TOPSIS output to a simple file containing property addresses and matching green score so it can be directly uploaded to the Bubble database.
-
+* /R/7_googleapi_mapping.R - This script tidies up the NYC Open Data addresses used in scripts 5 and 6 to ensure they 
+match Google API addresses before uploading to Bubble.
 
 ## Extra considerations:
 
