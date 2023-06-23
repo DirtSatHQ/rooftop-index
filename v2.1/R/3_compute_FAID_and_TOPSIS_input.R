@@ -27,25 +27,25 @@ library(leafpop) #stylizing map widget
 ######################################################################
 
 # #input data for NYC
-# footprint_dir = '/mnt/hdd/data/dirtSAT_NYC_data/processed/vector/tiled_footprints/'
-# dsm_dir = '/mnt/hdd/data/dirtSAT_NYC_data/processed/raster/tiled_dsm/'
-# dem_dir = '/mnt/hdd/data/dirtSAT_NYC_data/processed/raster/tiled_dem/'
-# ndvi_dir = '/mnt/hdd/data/dirtSAT_NYC_data/raw/ndvi/NYC_full_summer_ndvi.tif'
-# lst_dir = '/mnt/hdd/data/dirtSAT_NYC_data/raw/lst/NYC_full_summer_LST_100scaler.tif'
+footprint_dir = '/Volumes/NDB_HDD/processed/vector/tiled_footprints/'
+dsm_dir = '/Volumes/NDB_HDD/processed/raster/tiled_dsm/'
+dem_dir = '/Volumes/NDB_HDD/processed/raster/tiled_dem/'
+ndvi_dir = '/Volumes/NDB_HDD/raw/ndvi/NYC_full_summer_ndvi.tif'
+lst_dir = '/Volumes/NDB_HDD/raw/lst/NYC_full_summer_LST_100scaler.tif'
 # 
 # #write dir
-# out_dir = '/mnt/hdd/data/dirtSAT_NYC_data/final/tiled_TOPSIS_input/'
+out_dir = '/Volumes/NDB_HDD/final/tiled_TOPSIS_input/'
 
 
 #input data for MIAMI
-footprint_dir = '/mnt/hdd/data/dirtSAT_Miami_data/processed/vector/tiled_footprints/'
-dsm_dir = '/mnt/hdd/data/dirtSAT_Miami_data/processed/raster/tiled_dsm/'
-dem_dir = '/mnt/hdd/data/dirtSAT_Miami_data/processed/raster/tiled_dem/'
-ndvi_dir = '/mnt/hdd/data/dirtSAT_Miami_data/raw/ndvi/Miami_full_summer_ndvi.tif'
-lst_dir = '/mnt/hdd/data/dirtSAT_Miami_data/raw/lst/Miami_full_summer_LST_100scaler.tif'
+# footprint_dir = '/mnt/hdd/data/dirtSAT_Miami_data/processed/vector/tiled_footprints/'
+# dsm_dir = '/mnt/hdd/data/dirtSAT_Miami_data/processed/raster/tiled_dsm/'
+# dem_dir = '/mnt/hdd/data/dirtSAT_Miami_data/processed/raster/tiled_dem/'
+# ndvi_dir = '/mnt/hdd/data/dirtSAT_Miami_data/raw/ndvi/Miami_full_summer_ndvi.tif'
+# lst_dir = '/mnt/hdd/data/dirtSAT_Miami_data/raw/lst/Miami_full_summer_LST_100scaler.tif'
 
 #write dir
-out_dir = '/mnt/hdd/data/dirtSAT_Miami_data/final/tiled_TOPSIS_input/'
+# out_dir = '/mnt/hdd/data/dirtSAT_Miami_data/final/tiled_TOPSIS_input/'
 
 ######################################################################
 #                       define hyperparameters                       #
@@ -77,6 +77,9 @@ footprints_files = list.files(footprint_dir, full.names = T) %>%
   mutate(footprint = value) %>%
   dplyr::select(-value)
 
+# clears memory space
+#rm(footprint_dir)
+
 #then dem
 dem_files = list.files(dem_dir, full.names = T) %>%
   as_tibble() %>%
@@ -84,6 +87,9 @@ dem_files = list.files(dem_dir, full.names = T) %>%
            str_pad(., 3, pad = "0")) %>%
   mutate(dem = value) %>%
   dplyr::select(-value)
+
+# clears memory space
+#rm(dem_dir)
 
 #dsm
 dsm_files = list.files(dsm_dir, full.names = T) %>%
@@ -93,10 +99,15 @@ dsm_files = list.files(dsm_dir, full.names = T) %>%
   mutate(dsm = value) %>%
   dplyr::select(-value)
 
+# clears memory space
+#rm(dsm_dir)
+
 #left join all the files together by the id meta
 files = left_join(footprints_files, dem_files, by = 'id') %>%
   left_join(., dsm_files, by = 'id') %>%
   drop_na()
+
+print(files)
 
 ######################################################################
 #      import spatial data that is domain wide - LST and NDVI        #
@@ -107,11 +118,17 @@ ndvi = rast(ndvi_dir) %>%
   #reproject to match DEM 
   project(., crs(rast(files$dsm[1])), method = 'near') 
 
+#clears memory space 
+#rm(ndvi_dir)
+
 #import NYC wide LST, descale and convert from C to F
 lst = (((rast(lst_dir)/100)*9/5) + 32) %>%
   #convert to F
   #reproject to match DEM 
   project(., crs(rast(files$dsm[1])), method = 'near') 
+
+#clears memory space
+#rm(lst_dir)
 
 ######################################################################
 #  define the for loop that will be used to do the tiled analysis    #
@@ -123,6 +140,7 @@ lst = (((rast(lst_dir)/100)*9/5) + 32) %>%
 #note, this whole process could be converted into a function or
 #a series of functions
 for( i in 1:length(files$id)){
+  #i=1
   #print domain id to keep track of loop progress
   print(files$id[i])
   
@@ -176,6 +194,9 @@ for( i in 1:length(files$id)){
     #mask to inside buffer
     terra::mask(., inside_buffer, inverse = T)
   
+  #clear memory space
+  #rm(inside_buffer)
+  
   #plot parapet example if desired
   if(plot_parapet == T){
     #plot to show inside of building height example
@@ -196,10 +217,14 @@ for( i in 1:length(files$id)){
     #mask for building footprint
     terra::mask(., footprint) 
   #classify based on slope thresholds
-  pitch_class = (slope <= slope_threshold) %>%
-    #replace non-flat pixels as NA
-    na_if(., 0)
-    
+  pitch_class = (slope <= slope_threshold) #%>%
+  #replace non-flat pixels as NA
+  #na_if(., 0)
+  NAflag(pitch_class)<-0
+  
+  #clears some memory
+  #rm(dsm)
+  
   #compute dataset to calculate average height of flat class per building
   flat_class_height = hgt_above_ground * pitch_class
   
@@ -250,6 +275,9 @@ for( i in 1:length(files$id)){
     #filter for building footprints bigger than the absolute area thresh hyperparameter
     filter(building_total_area_ft2 > abs_area_threshold)
   
+  #clears memory space
+  #rm(footprint)
+  
   #######################################################
   #           calculate a map of flat areas             #
   #######################################################
@@ -296,7 +324,7 @@ for( i in 1:length(files$id)){
     filter(area > 500) %>%
     #intersects with the filtered footprints
     st_intersection(., footprint_filtered)
-
+  
   #compute small flat area heights
   flat_regions_height = (hgt_above_ground * pitch_class) %>%
     terra::mask(., small_flat_area_mask)
@@ -337,11 +365,13 @@ for( i in 1:length(files$id)){
   #######################################################
   
   #identify areas within building footprint that are flat and greater than 5000 ft2
-  FAID = ((slope %>%
-             #Gaussian smoother, classify based on 45 degree slope
-             raster.gaussian.smooth(.)) <= 45) %>%
-    #replace non-flat pixels as NA
-    na_if(., 0) %>%
+  FAID_temp = ((slope %>%
+                  #Gaussian smoother, classify based on 45 degree slope
+                  raster.gaussian.smooth(.)) <= 45) 
+  #replace non-flat pixels as NA
+  #na_if(., 0) %>%
+  NAflag(FAID_temp)<-0 
+  FAID = FAID_temp %>%
     #convert to stars object
     stars::st_as_stars() %>%
     #convert to polygon with merge = True
@@ -368,7 +398,7 @@ for( i in 1:length(files$id)){
   #convert back to SF object for final extraction (must reconvert for C++ to work)
   FAID_final = st_as_sf(FAID) %>%
     distinct(geometry, .keep_all = TRUE)
-    
+  
   #######################################################
   #          compute final data for each FAID           #
   #######################################################
@@ -409,6 +439,7 @@ for( i in 1:length(files$id)){
   tictoc::toc()
   
   #end of loop!
-}
-
-#fin!
+  #}
+  
+  #fin!
+  
