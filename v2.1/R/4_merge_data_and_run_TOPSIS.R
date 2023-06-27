@@ -80,15 +80,15 @@ merged = tiled_results %>%
   st_transform(., st_crs('EPSG:4326'))
 
 #######################################################
-#   extract CUNY data - comment out for whole of NYC  #
+# remove parking lots or any FAID with height < 10ft  #
 #######################################################
 
-#Will get ranking for the whole of NYC though!!! Could you use percentiles for it to make sense
+#sets minimum for FAID height above ground in ft in order to filter out most, if not all, parking lots
+faid_height_threshold = 10
 
-#if(filter_tiled_input == T){
-#  merged = merged %>%
-#    filter(BBL %in% footprints_of_interest$base_bbl)
-#}
+merged = merged %>%
+  # removes FAID with height above ground below 10 ft in order to eliminate most parking lots
+  filter(FAID_height_above_ground > faid_height_threshold)
 
 #######################################################
 #               compute MCDA/TOPSIS                   #
@@ -98,26 +98,22 @@ merged = tiled_results %>%
 #Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS)
 #is a multiple criteria decision analysis (MCDA) used here
 
-# first we remove any row that contains NA for the following variables as it would cause issues with TOPSIS calculations: FAID_ave_slope, ave_parapet_height, 
-# FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi, FAID_ave_lst
-results_subset=merged %>%
-  #compute TOPSIS rank
-  #mutate(topsis_rank = merged %>%
-  #select appropriate data
-  dplyr::select(FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi, FAID_ave_lst) %>%
-  #remove geometry, restricts matrix transformation
-  st_drop_geometry() %>%
-  #convert to matrix
-  as.matrix()
-
-clean_results = merged[-unique(which(is.na(results_subset), arr.ind = T)[,1]),]
-
 # Then we can used the cleaned dataset to compute TOPSIS rankings
-final_results = clean_results %>%
+final_results = merged %>%
   #compute TOPSIS rank
-  mutate(topsis_score = clean_results %>%
+  mutate(topsis_score = merged %>%
+           #compute TOPSIS rank
+           #mutate(topsis_rank = merged %>%
            #select appropriate data
-           dplyr::select(FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi, FAID_ave_lst) %>%
+           dplyr::select(#FAID_ave_slope, 
+             #ave_parapet_height, 
+             FAID_flat_area_ft2, 
+             load_volume, 
+             FAID_height_above_ground, 
+             FAID_under_100ft, 
+             FAID_ave_ndvi, 
+             FAID_ave_lst
+           ) %>%
            #remove geometry, restricts matrix transformation
            st_drop_geometry() %>%
            #convert to matrix
@@ -133,18 +129,20 @@ final_results = clean_results %>%
            #min for NDVI, want to de-prioritize already green roofs
            #max for ave_lst, want rooftops to lower ave_lst
            #ASSUMES EQUAL WEIGHTING!!! (hense rep(1,6)) = 1 weight for each variable
-         TOPSIS(., rep(1,8), c('min', 'max', 'max', 'max', 'min', 'max', 'min','max')) %>%
+         TOPSIS(., c(0.2,0.2,0.2,0.1,0.1,0.2), c( 'max', 'max','min','max','min','max')) %>%
            #convert back to tibble
-           as_tibble() %>% mutate(score = value) %$% score) %>%
-  
-  mutate(topsis_rank = rank(-topsis_score))  %>%
-  #bind NDVI to the results
-  #mutate(NDVI = NDVI$NDVI) %>%
+           as_tibble() %>% mutate(score = value) %$% score) 
+
+final_results = final_results %>%    
+  mutate(topsis_rank = rank(-topsis_score)) 
+
+final_results = final_results %>%
   #select data of interest
-  dplyr::select(topsis_rank, topsis_score, FAID, FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_ave_ndvi, FAID_ave_lst) %>%
+  dplyr::select(topsis_rank, topsis_score,DOITT_ID, FAID, FAID_ave_slope, FAID_under_100ft,ave_parapet_height, FAID_flat_area_ft2,load_volume, FAID_height_above_ground, FAID_ave_ndvi, FAID_ave_lst,FAID_total_area_ft2,FAID_percent_flat_area) %>%
   #rename variables to human readable format
-  rename('TOPSIS MCDA Rank (1 = Best)' = topsis_rank,'TOPSIS score' = topsis_score, 'Average Slope of FAID (deg)' = FAID_ave_slope,
+  rename('TOPSIS MCDA Rank (1 = Best)' = topsis_rank,'TOPSIS score' = topsis_score,'Average Slope of FAID (deg)' = FAID_ave_slope,
          'Average Building Parapet Height (ft)' = ave_parapet_height,'Flat, Usable Area (ft2)' = FAID_flat_area_ft2,
+         'Flat, Total Area (ft2)' = FAID_total_area_ft2, 'Usable Percent of Flat, Total Area (ft2)' = FAID_percent_flat_area,
          'Rooftop Load Volume (ft3)' = load_volume, 'Average FAID Height Above Ground (ft)' = FAID_height_above_ground, 'NDVI' = FAID_ave_ndvi,
          'Average Summer Surface Temperature (F)' = FAID_ave_lst) %>%
   #finally, transform CRS to a common standard for exporting (WGS84)
