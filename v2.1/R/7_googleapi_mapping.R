@@ -8,7 +8,7 @@ library(stringr)
 library(readr)
 library(tidyverse)
 
-export_file = read.csv('/Volumes/NDB_HDD/final/final_geospatial/export_All-Properties-modified---_2023-06-15_11-20-09.csv')
+export_file = read.csv('/Volumes/NDB_HDD/final/final_geospatial/export_All-Properties-modified---_2023-07-21_17-53-04.csv')
 
 # Define function to extract city, zip code and country from the address fields
 tidy_fun <- function(x) {
@@ -34,8 +34,16 @@ export_file = export_file %>% dplyr::mutate(geo_street_num=str_replace_all(sappl
 export_file_clean = export_file %>% dplyr::mutate(flag = mapply(flag_fun,geo_street_num,text_street_num,geo_zipcode,text_zipcode),
                                      datetime = lapply(Creation.Date,function (x) as.POSIXct(x, format = "%b %d, %Y %I:%M %p")))
 
-export_latest = export_file_clean  %>%  dplyr::filter(flag==1) %>% dplyr::filter(datetime > as.POSIXct("2023-06-14")) %>%
-                                      dplyr::mutate(address_text=address_geo) %>% dplyr::select(address_short,address_geo,address_text,score,score_verbal)
+export_latest = export_file_clean  %>%  dplyr::filter(flag==1) %>% dplyr::filter(datetime > as.POSIXct("2023-07-21")) %>%
+                                      dplyr::mutate(address_text=address_geo) %>% dplyr::select(address_short,address_geo,address_text,application,
+                                                                                                bids,company,cre_report,energy_reduction_electricity, energy_reduction_heating,
+                                                                                                energy_savings,energy_savings_score_verbal,FAID,financing,
+                                                                                                greenroof_installation_cost,greenroof_maintenance_costs,img_map,members,
+                                                                                                name,notified,roi,score,score_verbal,solar_hours,solar_production,start_date,status,
+                                                                                                stormwater_capture,stormwater_capture_score_verbal,stormwater_mngt_savings,
+                                                                                                total_cost_savings,total_flat_area_pc_available,total_flat_roof_area,Creation.Date,
+                                                                                                Modified.Date,Slug,Creator,unique.id,geo_street_num,text_street_num,geo_zipcode,
+                                                                                                text_zipcode)
 
 
 export_latest = export_latest  %>% dplyr::filter(.,address_geo != "113- 10 157th St, Queens, NY 11433, USA" &
