@@ -28,7 +28,7 @@ footprints_of_interest_file = '/Users/nathaliedescusse-brown/Documents/DirtSat/E
 # #crs template for transfomations
 crs_template_file = '/Volumes/NDB_HDD/processed/raster/tiled_dem/dem_clipped_001.tif'
 # #define where the tiled TOPSIS input is
-tiled_TOPSIS_input_dir = '/Volumes/NDB_HDD/final/tiled_TOPSIS_input'
+tiled_TOPSIS_input_dir = '/Volumes/NDB_HDD/final/tiled_TOPSIS_input_test_abs_area_threshold_1000'
 # #define where the LST raster is for mapping
 lst_file = '/Volumes/NDB_HDD/raw/lst/NYC_full_summer_LST_100scaler.tif'
 # #define the locations for export of final widget and geojson file
@@ -138,7 +138,7 @@ final_results = final_results %>%
 
 final_results = final_results %>%
   #select data of interest
-  dplyr::select(topsis_rank, topsis_score,DOITT_ID, FAID, FAID_ave_slope, FAID_under_100ft,ave_parapet_height, FAID_flat_area_ft2,load_volume, FAID_height_above_ground, FAID_ave_ndvi, FAID_ave_lst,FAID_total_area_ft2,FAID_percent_flat_area) %>%
+  dplyr::select(topsis_rank, topsis_score,BIN, DOITT_ID, FAID, FAID_ave_slope, FAID_under_100ft,ave_parapet_height, FAID_flat_area_ft2,load_volume, FAID_height_above_ground, FAID_ave_ndvi, FAID_ave_lst,FAID_total_area_ft2,FAID_percent_flat_area,building_total_area_ft2,FAID_total_area_ft2) %>%
   #rename variables to human readable format
   rename('TOPSIS MCDA Rank (1 = Best)' = topsis_rank,'TOPSIS score' = topsis_score,'Average Slope of FAID (deg)' = FAID_ave_slope,
          'Average Building Parapet Height (ft)' = ave_parapet_height,'Flat, Usable Area (ft2)' = FAID_flat_area_ft2,
