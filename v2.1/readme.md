@@ -1,4 +1,4 @@
-﻿# DirtSAT v2.1 readme 
+# DirtSAT v2.1 readme 
 
 
 This readme document discusses how to run the “rooftop-index” v2.1 developed by DirtSAT. 
@@ -9,6 +9,12 @@ The full code base requires manual changes to run, as the format of any individu
 * Subgroup 2: These scripts (1 R script, 1 JavaScript script) interact with Google Earth Engine (GEE) to pull down satellite derived data. 
 * Subgroup 3: This script is the workhorse script that serves 2 purposes, computes Flat Areas (FA) on each rooftop and assigns them unique IDs (together denoted as FAIDs) and computes the input dataset for the Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS), a multi-criteria decision analysis method that is used to compute the final rank. 
 * Subgroup 4:  This script merges/filters separate TOPSIS input files and runs the TOPSIS algorithm to calculate the final rank and build the final HTML widget to display results.
+* Subgroup 5: This script matches the FAIDs returned by script 4 to the correct NYC Open Data addresses.
+* Subgroup 6: This script makes energy use/reduction/savings and emissions calculations in accordance with DirtSat Technical Basis for Calculation document.
+* Subgroup 7: This script addresses issues with geocoding by Google Maps API and discards addresses not recognized or wrongly assigned by the API.
+* Subgroup 8: This script, which is now redundant, pulled energy use and emissions data from https://data.cityofnewyork.us/Environment/Energy-and-Water-Data-Disclosure-for-Local-Law-84-/usc3-8zwd for about 3000 addresses in NYC.
+* Subgroup 9: This script is used to update any field within the Property table of the current Bubble database.
+
 
 
 Below describes each script within each subgroup to provide more detail. NOTE: rasters refer to gridded datasets such as digital elevation models (DEMs), digital surface models (DSMs), land surface temperature (LST) and the normalized difference vegetation index (NDVI - greenness). These rasters are manipulated using the terra and raster libraries in R. Vector datasets represent the footprint features. Vector datasets are manipulated using sf (simple features) library. General data manipulation follows tidy theory using the tidyverse (e.g. method chains using pipes “%>%”). 
@@ -38,20 +44,32 @@ Summary, if multi-domains are required run 1_1, 1_2, and 1_3, if the entire doma
 
 
 ## Subgroup 3: 
-* /R/3_compute_FAID_and_TOPSIS_input.R - This is the workforce script that computes FAIDs for each rooftop and footprint tile.FAIDs are areas within building footprints that are flat and greater than 5000 sf. To find contiguous flat areas, a raster of building height is smoothed with a gaussian filter to remove any pits, and a raster of slope is masked to 1 if slope is less than 45 degrees and 0 if slope is greater than 45 degrees. These two new rasters are multiplied and filtered to remove pixels that are smaller than 5 feet. The raster is then polygonized using GDAL and intersected with the building footprint vector to create a vector of contiguous flat areas within building footprints. Finally, this new vector is filtered to remove flat areas smaller than 5000 square feet. Then using these FAIDs and footprints we compute all of the required input for the TOPSIS algorithm; FAID_ave_slope, ave_parapet_height, FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi and FAID_ave_lst.
+* /R/3_compute_FAID_and_TOPSIS_input.R - This is the workforce script that computes FAIDs for each rooftop and footprint tile.FAIDs are areas within building footprints that are flat and greater than 1000 sf. To find contiguous flat areas, a raster of building height is smoothed with a gaussian filter to remove any pits, and a raster of slope is masked to 1 if slope is less than 11 degrees and 0 if slope is greater than 11 degrees. These two new rasters are multiplied and filtered to remove pixels that are smaller than 5 feet. The raster is then polygonized using GDAL and intersected with the building footprint vector to create a vector of contiguous flat areas within building footprints. Finally, this new vector is filtered to remove flat areas smaller than 1000 square feet. Then using these FAIDs and footprints we compute all of the required input for the TOPSIS algorithm; FAID_flat_area_ft2, load_volume, FAID_height_above_ground, FAID_under_100ft, FAID_ave_ndvi and FAID_ave_lst.
 
 
 ## Subgroup 4: 
 * /R/4_merge_data_and_run_TOPSIS.R - This is the final script. This script merges the tiled TOPSIS input geojson files from 3_1, provides methods to filer larger domains by areas of interest (such as CUNY), compute the TOPSIS rank and generate interactive maps in HTML widget form. 
 
 
-## Additional scripts: 
-Two further scripts were added to specifically associated physical Google Maps API addresses with the TOPSIS results so a verbal green score can be returned by DirtSat when a potential user enters an address.
-These scripts are:
-* /R/5_addresmerge.R - This script associates a physical address to each TOPSIS results returned by /R/4_merge_data_and_run_TOPSIS.R
-* /R/6_output_formatting_for_bubble.R - This script reformats TOPSIS output to a simple file containing property addresses and matching green score so it can be directly uploaded to the Bubble database.
+## Subgroup 5: 
+* /R/5_addresmerge.R - This script associates a physical address to each TOPSIS results returned by /R/4_merge_data_and_run_TOPSIS.R.This is done by using a spatial joint to links the output of script 4 and the NYC Open Data address.geojson file (exported from https://data.cityofnewyork.us/City-Government/NYC-Address-Points/g6pj-hd8k).
+
+## Subgroup 6: 
+* /R/6_output_formatting_for_bubble.R - This script makes all the energy use/reduction/savings and emissions reductions calculations based on the assumptions listed in the DirtSat Technical Basis for Calculation document (stored in the Tech folder of DirtSat Google Drive).
+This script also reformats TOPSIS output to a simple file containing property addresses and matching green score so it can be directly uploaded to the Bubble database.
+
+
+## Subgroup 7: 
 * /R/7_googleapi_mapping.R - This script tidies up the NYC Open Data addresses used in scripts 5 and 6 to ensure they 
-match Google API addresses before uploading to Bubble.
+match Google API addresses before uploading to Bubble. It requires having uploaded the output from 6 into Bubble for geocoding and then rexporting it once geocoded. The script can then use the Bubble export file to ensure the NYC Open Data were correctly geocoded and discards addresses that Google Maps API either cannot geocode or geocoded as the wrong address. The output of this script can then use to modify the current Property database so the correct addresses are displayed in the address_text field, which is needed to return details of the correct property within the app.
+
+
+## Subgroup 8: 
+* /R/8_buildingenergydata_formattedforbubble.R - This script is now redundant and has been superseded by the updated to script #6. It was used to pull actual energy and emissions data from https://data.cityofnewyork.us/Environment/Energy-and-Water-Data-Disclosure-for-Local-Law-84-/usc3-8zwd.
+
+## Subgroup 9: 
+* /R/9_propertydata_update_template - This script is used to generate new file with uniqueid matching the current uniqueid in the Bubble Property table of the current Bubble database. This script is used when the database needs to be modified as opposed to overwritten.
+
 
 ## Extra considerations:
 
