@@ -18,3 +18,15 @@ latest_data_withuniqueid = merge(x = latest_data, y = address_uniqueid, by = "co
 latest_data_withuniqueid = latest_data_withuniqueid %>% filter(!is.na(`unique id`))
 
 write_csv(latest_data_withuniqueid,'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid.csv')
+
+write_csv(latest_data_withuniqueid[1:20000,],'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid_1_to_20000.csv')
+
+write_csv(latest_data_withuniqueid[20001:40000,],'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid_20001_to_40000.csv')
+
+write_csv(latest_data_withuniqueid[40001:60000,],'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid_40001_to_60000.csv')
+
+write_csv(latest_data_withuniqueid[60001:80000,],'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid_600001_to_80000.csv')
+
+write_csv(latest_data_withuniqueid[80001:100000,],'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid_80001_to_100000.csv')
+
+write_csv(latest_data_withuniqueid[100001:nrow(latest_data),],'/Volumes/NDB_HDD/final/final_geospatial/latest_data_withuniqueid_100001_to_end.csv')
