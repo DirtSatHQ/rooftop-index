@@ -40,7 +40,7 @@ net_heating_emission_reduction_fromgreen_persqft = 0.0000125
 net_electricity_emission_reduction_fromsolar_factor = 0.000709
 
 #BELOW WILL NEED TO BE UPDATED WITH ACTUAL CALCS ONCE AGREED
-roi_dummy = '110-125%' # TO BE DISCUSSED FURTHER
+irr_green_dummy = '11%' # TO BE DISCUSSED FURTHER
 
 #Assumptions related to stormwater capture:
 nyc_average_yearly_rainfall_ft = 3.88
@@ -76,7 +76,7 @@ nyc_buildings_csv = nyc_buildings_csv %>%  dplyr::mutate(address_short = str_squ
                 greenroof_installation_cost = (greenroof_installation_cost_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`),
                 greenroof_maintenance_costs = greenroof_maintenance_costs_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`,
                 img_map = "",members = "",name = "",notified="",
-                IRR_green = roi_dummy,
+                IRR_green = irr_green_dummy,
                 score = case_when(`TOPSIS score`>= topsis_percentile[6] ~ 'A',(`TOPSIS score`< topsis_percentile[6])&(`TOPSIS score`>= topsis_percentile[5]) ~ 'B',
                                   (`TOPSIS score`< topsis_percentile[5])&(`TOPSIS score`>= topsis_percentile[4]) ~ 'C',(`TOPSIS score`< topsis_percentile[4])&(`TOPSIS score`>= topsis_percentile[3]) ~ 'D',
                                   (`TOPSIS score`< topsis_percentile[3])&(`TOPSIS score`>= topsis_percentile[2]) ~ 'E',`TOPSIS score`< topsis_percentile[2] ~ 'F'),
@@ -120,7 +120,7 @@ nyc_buildings_csv = nyc_buildings_csv %>% mutate(
                                                           total_cost_savings_biosolar_peryear,
                                                           FAID,financing,
                                                           greenroof_installation_cost,greenroof_maintenance_costs,img_map,
-                                                          members,name,notified,roi,score,score_verbal,start_date,status,stormwater_capture
+                                                          members,name,notified,IRR_green,score,score_verbal,start_date,status,stormwater_capture
                                                           ,stormwater_mngt_savings,
                                                           total_flat_area_pc_available,total_flat_roof_area,`Created Date`,
                                                           `Modified Date`,Slug,`Created By`,`Unique id`))
