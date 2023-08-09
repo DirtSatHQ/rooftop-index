@@ -57,7 +57,7 @@ slope_threshold = 11
 #Minimum percentage of flat area on a roof for the roof to be classified as 'flat'
 area_threshold = 9
 #area threshold in ft2
-abs_area_threshold = 5000
+abs_area_threshold = 1000
 
 #define booleen for plot checks
 plot_parapet = F
@@ -140,7 +140,7 @@ lst = (((rast(lst_dir)/100)*9/5) + 32) %>%
 #note, this whole process could be converted into a function or
 #a series of functions
 for( i in 1:length(files$id)){
-  #i=1
+
   #print domain id to keep track of loop progress
   print(files$id[i])
   
