@@ -19,9 +19,9 @@ emissionsfrom_fuel=0.173
 emissionsfrom_steam=0 # update when number is known
 
 #Assumptions related to energy savings:
-energy_savings_kwh_persqft = 2.6
+energy_savings_electricity_kwh_persqft = 2.6
 energy_cost_dollar_perkwh = 0.2
-energy_savings_therms_persqft = 0.00216
+energy_savings_heating_kwh_persqft = 0.18
 energy_cost_dollar_pertherm = 1.5
 rooftop_lifetime_years = 25
 
@@ -32,7 +32,7 @@ greenroof_maintenance_costs_persqft = 0.75
 #Assumptions on solar production
 average_daily_sunlight_hours=3.5
 number_of_kwpower_persqft=0.014 #This comes from Project Sunroof
-solar_usable_area=0.75
+solar_usable_area=0.90
 
 #Assumptions related to emissions
 net_electricity_emission_reduction_fromgreen_persqft = 0.00184
@@ -40,7 +40,7 @@ net_heating_emission_reduction_fromgreen_persqft = 0.0000125
 net_electricity_emission_reduction_fromsolar_factor = 0.000709
 
 #BELOW WILL NEED TO BE UPDATED WITH ACTUAL CALCS ONCE AGREED
-irr_green_dummy = '11%' # TO BE DISCUSSED FURTHER
+roi_green_dummy = '11%' # TO BE DISCUSSED FURTHER
 
 #Assumptions related to stormwater capture:
 nyc_average_yearly_rainfall_ft = 3.88
@@ -67,16 +67,15 @@ nyc_buildings_csv = nyc_buildings_csv %>%  dplyr::mutate(address_short = str_squ
                 application = "",bids = "",company= "",cre_report = "",
                 net_emissions_current_peryear = `building_total_area_ft2`*(emissionsfrom_electricy+emissionsfrom_naturalgas+emissionsfrom_fuel+emissionsfrom_steam),
                 net_emissions_reduction_green_peryear = (net_electricity_emission_reduction_fromgreen_persqft+net_heating_emission_reduction_fromgreen_persqft)*nyc_buildings_nona$`Flat, Usable Area (ft2)` ,
-                energy_reduction_electricity_green_peryear = (energy_savings_kwh_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`),
-                energy_reduction_heating_green_peryear = (energy_savings_therms_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`),   
-                energy_savings_green_rooftoplifetime = ((energy_savings_kwh_persqft * energy_cost_dollar_perkwh + energy_savings_therms_persqft * energy_cost_dollar_pertherm) * nyc_buildings_nona$`Flat, Usable Area (ft2)` * rooftop_lifetime_years),
-                energy_savings_green_peryear =  ((energy_savings_kwh_persqft * energy_cost_dollar_perkwh + energy_savings_therms_persqft * energy_cost_dollar_pertherm) * nyc_buildings_nona$`Flat, Usable Area (ft2)` ), 
+                energy_reduction_electricity_green_peryear = (energy_savings_electricity_kwh_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`),
+                energy_reduction_heating_green_peryear = (energy_savings_heating_kwh_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`),   
+                energy_savings_green_rooftoplifetime = ((energy_savings_electricity_kwh_persqft * energy_cost_dollar_perkwh + energy_savings_heating_kwh_persqft * energy_cost_dollar_perkwh) * nyc_buildings_nona$`Flat, Usable Area (ft2)` * rooftop_lifetime_years),
+                energy_savings_green_peryear =  ((energy_savings_electricity_kwh_persqft * energy_cost_dollar_perkwh + energy_savings_heating_kwh_persqft * energy_cost_dollar_perkwh) * nyc_buildings_nona$`Flat, Usable Area (ft2)` ), 
                 energy_production_fromsolar_peryear = average_daily_sunlight_hours*number_of_kwpower_persqft*nyc_buildings_nona$`Flat, Usable Area (ft2)`*solar_usable_area*365,
                 financing = "",
                 greenroof_installation_cost = (greenroof_installation_cost_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`),
                 greenroof_maintenance_costs = greenroof_maintenance_costs_persqft * nyc_buildings_nona$`Flat, Usable Area (ft2)`,
                 img_map = "",members = "",name = "",notified="",
-                IRR_green = irr_green_dummy,
                 score = case_when(`TOPSIS score`>= topsis_percentile[6] ~ 'A',(`TOPSIS score`< topsis_percentile[6])&(`TOPSIS score`>= topsis_percentile[5]) ~ 'B',
                                   (`TOPSIS score`< topsis_percentile[5])&(`TOPSIS score`>= topsis_percentile[4]) ~ 'C',(`TOPSIS score`< topsis_percentile[4])&(`TOPSIS score`>= topsis_percentile[3]) ~ 'D',
                                   (`TOPSIS score`< topsis_percentile[3])&(`TOPSIS score`>= topsis_percentile[2]) ~ 'E',`TOPSIS score`< topsis_percentile[2] ~ 'F'),
@@ -87,6 +86,7 @@ nyc_buildings_csv = nyc_buildings_csv %>%  dplyr::mutate(address_short = str_squ
                 stormwater_capture = nyc_average_yearly_rainfall_ft * GSA_report_retained_percent/100 * conversion_fromcft_togallon * nyc_buildings_nona$`Flat, Usable Area (ft2)`, 
                 stormwater_mngt_savings = GSA_national_cost_savings_persft * nyc_buildings_nona$`Flat, Usable Area (ft2)`,
                 total_cost_savings_green_peryear = energy_savings_green_peryear + stormwater_mngt_savings,
+                ROI_green = (total_cost_savings_green_peryear-greenroof_maintenance_costs)*rooftop_lifetime_years*100/greenroof_installation_cost,
                 total_flat_area_pc_available = nyc_buildings_nona$`Usable Percent of Flat, Total Area (ft2)`,
                 total_flat_roof_area = nyc_buildings_nona$`Flat, Usable Area (ft2)`,
                 `Created Date` = "", `Modified Date` = "", Slug = "", `Created By` = "", `Unique id`=""
@@ -120,7 +120,7 @@ nyc_buildings_csv = nyc_buildings_csv %>% mutate(
                                                           total_cost_savings_biosolar_peryear,
                                                           FAID,financing,
                                                           greenroof_installation_cost,greenroof_maintenance_costs,img_map,
-                                                          members,name,notified,IRR_green,score,score_verbal,start_date,status,stormwater_capture
+                                                          members,name,notified,ROI_green,score,score_verbal,start_date,status,stormwater_capture
                                                           ,stormwater_mngt_savings,
                                                           total_flat_area_pc_available,total_flat_roof_area,`Created Date`,
                                                           `Modified Date`,Slug,`Created By`,`Unique id`))
@@ -140,8 +140,4 @@ nyc_buildings_csv <- nyc_buildings_csv %>%
 nyc_buildings_csv=nyc_buildings_csv[-c(which(nyc_buildings_csv$address_short=="516 E 13 St"),which(nyc_buildings_csv$address_short=="922 Prospect Pl")),]
 
 write_sf(nyc_buildings_csv,'/Volumes/NDB_HDD/final/final_geospatial/final_NYC_results_withaddress.csv')
-
-nyc_buildings_csv_noduplicates=unique(nyc_buildings_csv)
-
-write_csv(nyc_buildings_csv_noduplicates,'/Volumes/NDB_HDD/final/final_geospatial/final_NYC_results_withaddress_noduplicates.csv')
 
